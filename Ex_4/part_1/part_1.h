@@ -34,7 +34,7 @@
  * @brief The time to sleep between sending ping requests in seconds.
  * @note Default value is 1 second.
 */
-#define SLEEP_TIME 4
+#define SLEEP_TIME 1
 
 /*
  * @brief Maximum number of requests to send to the destination address.
@@ -42,15 +42,21 @@
  * @attention The default value is 0.
  * @note If the value is set to 0, the program will send requests indefinitely.
 */
-#define MAX_REQUESTS 0
+#define MAX_REQUESTS 10
 
 /*
  * @brief Maximum number of retries for the ping request.
  * @note The program will try to send the ping request this amount of times before giving up.
  * @attention The default value is 3.
 */
-#define MAX_RETRY 10
+#define MAX_RETRY 4
 
+// Variables for statistics
+int sending_pings = 0;
+int recive_pings = 0;
+float total_time = 0.0;
+float *rtts = NULL;  // Dynamically allocated array to store RTTs
+int rtt_count = 0;
 
 /****************************************************************************************
  * 										FUNCTIONS										*
@@ -68,5 +74,6 @@
  * @attention You don't actually need to understand what the hell is going on here, just use it.
 */
 unsigned short int calculate_checksum(void *data, unsigned int bytes);
+void display_results(float*result, char* addr);
 
 #endif // _PING_H

@@ -1,57 +1,89 @@
-/*
- * @file ping_ipv6.c
- * @version 1.1
- * @author Roy Simanovich
- * @date 2024-02-13
- * @brief A simple implementation of the ping program using raw sockets, supporting both IPv4 and IPv6.
- */
+#include <stdio.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/ip_icmp.h>
+#include <netinet/icmp6.h>
+#include <poll.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <unistd.h>  // Include this header for getopt, optarg, and usleep
+#include <getopt.h>
+#include "part_1.h"
 
-#include <stdio.h> // Standard input/output definitions
-#include <arpa/inet.h> // Definitions for internet operations (inet_pton, inet_ntoa)
-#include <netinet/in.h> // Internet address family (AF_INET, AF_INET6)
-#include <netinet/ip.h> // Definitions for internet protocol operations (IP header)
-#include <netinet/ip_icmp.h> // Definitions for internet control message protocol operations (ICMP header)
-#include <netinet/icmp6.h> // Definitions for ICMPv6 header
-#include <poll.h> // Poll API for monitoring file descriptors (poll)
-#include <errno.h> // Error number definitions (EACCES, EPERM)
-#include <string.h> // String manipulation functions (strlen, memset, memcpy)
-#include <sys/socket.h> // Definitions for socket operations (socket, sendto, recvfrom)
-#include <sys/time.h> // Time types (struct timeval and gettimeofday)
-#include <unistd.h> // UNIX standard function definitions (getpid, close, sleep)
 
-#define BUFFER_SIZE 1024
-#define TIMEOUT 1000 // Timeout in milliseconds
-#define MAX_RETRY 4
-#define MAX_REQUESTS 10
-#define SLEEP_TIME 4
-
-unsigned short int calculate_checksum(void *data, unsigned int bytes);
-
-/*
- * @brief Main function of the program.
- * @param argc Number of command-line arguments.
- * @param argv Array of command-line arguments.
- * @return 0 on success, 1 on failure.
- */
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s <destination_ip>\n", argv[0]);
+    if (argc < 5) {
+        fprintf(stderr, "Usage: %s -a <address> -t <type> [-c <count>] [-f]\n", argv[0]);
+        return 1;
+    }
+    int count = MAX_REQUESTS;  // Default to 10 pings
+    int flood = 0;             // Default is no flood mode
+    int type = 0;              // IPv4 or IPv6 (determined later)
+    char *address = NULL;      // IP address to ping
+    int opt;
+
+    // Parse command line options using getopt
+    while ((opt = getopt(argc, argv, "a:t:c:f")) != -1) {
+        switch (opt) {
+            case 'a':
+                address = optarg;  // IP address to ping
+                break;
+            case 't':
+                type = atoi(optarg);  // Communication type (4 for IPv4, 6 for IPv6)
+                if (type != 4 && type != 6) {
+                    fprintf(stderr, "Error: Invalid type '%s'. Use 4 for IPv4 or 6 for IPv6.\n", optarg);
+                    return 1;
+                }
+                break;
+            case 'c':
+                count = atoi(optarg);  // Set the count of pings
+                break;
+            case 'f':
+                flood = 1;  // Enable flood mode
+                break;
+            default:
+                fprintf(stderr, "Usage: %s -a <address> -t <type> [-c <count>] [-f]\n", argv[0]);
+                return 1;
+        }
+    }
+
+    if (address == NULL) {
+        fprintf(stderr, "Error: IP address is required (use -a flag).\n");
+        return 1;
+    }
+    if (type == 0) {
+        fprintf(stderr, "Error: Communication type is required (use -t flag with 4 for IPv4 or 6 for IPv6).\n");
+        return 1;
+    }
+    rtts= (float*)malloc(count*sizeof(float));
+    if (rtts == NULL) {
+        perror("malloc");
         return 1;
     }
 
+    // Set the socket type based on the communication type (IPv4 or IPv6)
     struct sockaddr_storage destination_address;
     memset(&destination_address, 0, sizeof(destination_address));
 
-    if (inet_pton(AF_INET, argv[1], &((struct sockaddr_in *)&destination_address)->sin_addr) > 0) {
+    if (type == 4) {
+        if (inet_pton(AF_INET, address, &((struct sockaddr_in *)&destination_address)->sin_addr) <= 0) {
+            fprintf(stderr, "Error: \"%s\" is not a valid IPv4 address\n", address);
+            return 1;
+        }
         ((struct sockaddr_in *)&destination_address)->sin_family = AF_INET;
-    } else if (inet_pton(AF_INET6, argv[1], &((struct sockaddr_in6 *)&destination_address)->sin6_addr) > 0) {
+    } else if (type == 6) {
+        if (inet_pton(AF_INET6, address, &((struct sockaddr_in6 *)&destination_address)->sin6_addr) <= 0) {
+            fprintf(stderr, "Error: \"%s\" is not a valid IPv6 address\n", address);
+            return 1;
+        }
         ((struct sockaddr_in6 *)&destination_address)->sin6_family = AF_INET6;
-    } else {
-        fprintf(stderr, "Error: \"%s\" is not a valid IP address\n", argv[1]);
-        return 1;
     }
 
-    int sock = (destination_address.ss_family == AF_INET) ?
+    int sock = (type == 4) ?
                socket(AF_INET, SOCK_RAW, IPPROTO_ICMP) :
                socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 
@@ -71,12 +103,12 @@ int main(int argc, char *argv[]) {
     fds[0].fd = sock;
     fds[0].events = POLLIN;
 
-    fprintf(stdout, "PING %s with %d bytes of data:\n", argv[1], payload_size);
+    fprintf(stdout, "PING %s with %d bytes of data:\n", address, payload_size);
 
-    while (1) {
+    while (count-- > 0) {
         memset(buffer, 0, sizeof(buffer));
 
-        if (destination_address.ss_family == AF_INET) {
+        if (type == 4) {
             struct icmphdr icmp_header;
             icmp_header.type = ICMP_ECHO;
             icmp_header.code = 0;
@@ -102,7 +134,7 @@ int main(int argc, char *argv[]) {
         struct timeval start, end;
         gettimeofday(&start, NULL);
 
-        if (destination_address.ss_family == AF_INET) {
+        if (type == 4) {
             if (sendto(sock, buffer, (sizeof(struct icmphdr) + payload_size), 0, (struct sockaddr *)&destination_address, sizeof(struct sockaddr_in)) <= 0) {
                 perror("sendto(2)");
                 close(sock);
@@ -115,6 +147,7 @@ int main(int argc, char *argv[]) {
                 return 1;
             }
         }
+        sending_pings ++;
 
         int ret = poll(fds, 1, TIMEOUT);
         if (ret == 0) {
@@ -145,7 +178,7 @@ int main(int argc, char *argv[]) {
             retries = 0;
             gettimeofday(&end, NULL);
 
-            if (destination_address.ss_family == AF_INET) {
+            if (type == 4) {
                 struct iphdr *ip_header = (struct iphdr *)buffer;
                 struct icmphdr *icmp_header = (struct icmphdr *)(buffer + ip_header->ihl * 4);
 
@@ -156,7 +189,8 @@ int main(int argc, char *argv[]) {
                             inet_ntoa(((struct sockaddr_in *)&source_address)->sin_addr),
                             ntohs(icmp_header->un.echo.sequence),
                             ip_header->ttl, pingPongTime);
-
+                    rtts[rtt_count++]= pingPongTime;
+                    recive_pings++;
                     if (seq == MAX_REQUESTS)
                         break;
                 }
@@ -169,30 +203,62 @@ int main(int argc, char *argv[]) {
                     inet_ntop(AF_INET6, &((struct sockaddr_in6 *)&source_address)->sin6_addr, addr_str, sizeof(addr_str));
                     fprintf(stdout, "%d bytes from %s: icmp_seq=%d time=%.2fms\n",
                             payload_size, addr_str, ntohs(icmp6_header->icmp6_seq), pingPongTime);
-
+                    rtts[rtt_count++]= pingPongTime;
+                    recive_pings++;
                     if (seq == MAX_REQUESTS)
                         break;
                 }
-}}}}
+            }
+        }
+
+        // Flood mode (send continuously without delay)
+        if (flood) {
+            sleep(0);  // No delay between pings in flood mode
+        } else {
+            sleep(SLEEP_TIME);  // Delay between pings in normal mode
+        }
+    }
+
+    close(sock);
+    display_results(rtts, address);
+    return 0;
+}
+
 unsigned short int calculate_checksum(void *data, unsigned int bytes) {
     unsigned short int *data_pointer = (unsigned short int *)data;
     unsigned int total_sum = 0;
 
-    // Main summing loop.
-    while (bytes > 1)
-    {
-        total_sum += *data_pointer++; // Some magic pointer arithmetic.
+    while (bytes > 1) {
+        total_sum += *data_pointer++;
         bytes -= 2;
     }
 
-    // Add left-over byte, if any.
-    if (bytes > 0)
+    if (bytes > 0) {
         total_sum += *((unsigned char *)data_pointer);
+    }
 
-    // Fold 32-bit sum to 16 bits.
-    while (total_sum >> 16)
+    while (total_sum >> 16) {
         total_sum = (total_sum & 0xFFFF) + (total_sum >> 16);
+    }
 
-    // Return the one's complement of the result.
     return (~((unsigned short int)total_sum));
+}
+
+void display_results(float*result, char* addr) {
+    if (rtt_count ==0) {
+        printf("There is no info to display");
+    }
+    float min = result[0],max=result[0], sum = result[0];
+    for (int i = 1;i<rtt_count;i++) {
+        if (result[i] < min) {
+            min = result[i];
+        }
+        if (result[i]> max) {
+            max=result[i];
+        }
+        sum += result[i];
+    }
+    float avg = sum / rtt_count;
+    printf("--- %s ping statistics ---\n%d packets transmitted, %d received, time %.2fms\nrtt min/avg/max = %.2f/%.2f/%.2fms\n"
+        ,addr,sending_pings,recive_pings,sum,min,avg,max);
 }

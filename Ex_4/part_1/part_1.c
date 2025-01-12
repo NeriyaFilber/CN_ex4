@@ -21,9 +21,9 @@
 
 #define BUFFER_SIZE 1024
 #define TIMEOUT 1000 // Timeout in milliseconds
-#define MAX_RETRY 3
-#define MAX_REQUESTS 4
-#define SLEEP_TIME 1
+#define MAX_RETRY 4
+#define MAX_REQUESTS 10
+#define SLEEP_TIME 4
 
 unsigned short int calculate_checksum(void *data, unsigned int bytes);
 

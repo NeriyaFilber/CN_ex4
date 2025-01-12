@@ -34,7 +34,7 @@
  * @brief The time to sleep between sending ping requests in seconds.
  * @note Default value is 1 second.
 */
-#define SLEEP_TIME 1
+#define SLEEP_TIME 4
 
 /*
  * @brief Maximum number of requests to send to the destination address.
@@ -49,7 +49,7 @@
  * @note The program will try to send the ping request this amount of times before giving up.
  * @attention The default value is 3.
 */
-#define MAX_RETRY 4
+#define MAX_RETRY 10
 
 
 /****************************************************************************************

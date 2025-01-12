@@ -75,5 +75,5 @@ int rtt_count = 0;
 */
 unsigned short int calculate_checksum(void *data, unsigned int bytes);
 void display_results(float*result, char* addr);
-
+double calculate_std(float *arr, int size, float mean);
 #endif // _PING_H

@@ -14,6 +14,8 @@
 #include <getopt.h>
 #include "part_1.h"
 
+#include <math.h>
+
 
 int main(int argc, char *argv[]) {
     if (argc < 5) {
@@ -259,6 +261,18 @@ void display_results(float*result, char* addr) {
         sum += result[i];
     }
     float avg = sum / rtt_count;
-    printf("--- %s ping statistics ---\n%d packets transmitted, %d received, time %.2fms\nrtt min/avg/max = %.2f/%.2f/%.2fms\n"
-        ,addr,sending_pings,recive_pings,sum,min,avg,max);
+    printf("--- %s ping statistics ---\n%d packets transmitted, %d received, time %.2fms\nrtt min/avg/max/medv = "
+           "%.2f/%.2f/%.2f/%.2fms\n"
+        ,addr,sending_pings,recive_pings,sum,min,avg,max,calculate_std(result,rtt_count,avg));
+}
+double calculate_std(float *arr, int size, float mean) {
+    double sum_of_squares = 0.0;
+
+    // Calculate the sum of squared differences from the mean
+    for (int i = 0; i < size; i++) {
+        sum_of_squares += (arr[i] - mean) * (arr[i] - mean);
+    }
+
+    // Calculate standard deviation (sqrt of the variance)
+    return sqrt(sum_of_squares / size);  // For population std dev. Use (size-1) for sample std dev.
 }

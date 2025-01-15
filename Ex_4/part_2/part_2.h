@@ -34,7 +34,7 @@
  * @brief The time to sleep between sending ping requests in seconds.
  * @note Default value is 1 second.
 */
-#define SLEEP_TIME 1
+#define SLEEP_TIME 2
 
 /*
  * @brief Maximum number of requests to send to the destination address.
@@ -42,7 +42,7 @@
  * @attention The default value is 0.
  * @note If the value is set to 0, the program will send requests indefinitely.
 */
-#define MAX_REQUESTS 4
+#define MAX_REQUESTS 10
 
 /*
  * @brief Maximum number of retries for the ping request.
@@ -55,7 +55,6 @@
 int sending_pings = 0;
 int recive_pings = 0;
 float total_time = 0.0;
-float *rtts = NULL;  // Dynamically allocated array to store RTTs
 int rtt_count = 0;
 
 /****************************************************************************************

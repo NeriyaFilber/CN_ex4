@@ -12,21 +12,19 @@
 #include <sys/time.h>
 #include <unistd.h>  // Include this header for getopt, optarg, and usleep
 #include <getopt.h>
-#include "part_1.h"
+#include "part_2.h"
 #include <math.h>
 
 
 int main(int argc, char *argv[]) {
     if (argc < 5) {
-        fprintf(stderr, "Usage: %s -a <address> -t <type> [-c <count>] [-f]\n", argv[0]);
+        fprintf(stderr, "Usage: %s -a <address>\n", argv[0]);
         return 1;
     }
     int count = MAX_REQUESTS;  // Default to 10 pings
     int flood = 0;             // Default is no flood mode
-    int type = 0;              // IPv4 or IPv6 (determined later)
     char *address = NULL;      // IP address to ping
     int opt;
-    int to_send;
 
     // Parse command line options using getopt
     while ((opt = getopt(argc, argv, "a:t:c:f")) != -1) {
@@ -52,7 +50,7 @@ int main(int argc, char *argv[]) {
                 return 1;
         }
     }
-    to_send = count;
+
     if (address == NULL) {
         fprintf(stderr, "Error: IP address is required (use -a flag).\n");
         return 1;
@@ -107,9 +105,9 @@ int main(int argc, char *argv[]) {
 
     fprintf(stdout, "PING %s with %d bytes of data:\n", address, payload_size);
 
-    while (count >= 0) {
-        printf("count %d\n",count);
+    while (count-- > 0) {
         memset(buffer, 0, sizeof(buffer));
+
         if (type == 4) {
             struct icmphdr icmp_header;
             icmp_header.type = ICMP_ECHO;
@@ -127,7 +125,7 @@ int main(int argc, char *argv[]) {
             icmp6_header.icmp6_code = 0;
             icmp6_header.icmp6_id = htons(getpid());
             icmp6_header.icmp6_seq = htons(seq++);
-            icmp6_header.icmp6_cksum = 0; //TODO add checksum if needs
+            icmp6_header.icmp6_cksum = 0;
 
             memcpy(buffer, &icmp6_header, sizeof(icmp6_header));
             memcpy(buffer + sizeof(icmp6_header), msg, payload_size);
@@ -193,7 +191,7 @@ int main(int argc, char *argv[]) {
                             ip_header->ttl, pingPongTime);
                     rtts[rtt_count++]= pingPongTime;
                     recive_pings++;
-                    if (seq == to_send)
+                    if (seq == MAX_REQUESTS)
                         break;
                 }
             } else {
@@ -207,7 +205,7 @@ int main(int argc, char *argv[]) {
                             payload_size, addr_str, ntohs(icmp6_header->icmp6_seq), pingPongTime);
                     rtts[rtt_count++]= pingPongTime;
                     recive_pings++;
-                    if (seq == to_send)
+                    if (seq == MAX_REQUESTS)
                         break;
                 }
             }
@@ -219,12 +217,10 @@ int main(int argc, char *argv[]) {
         } else {
             sleep(SLEEP_TIME);  // Delay between pings in normal mode
         }
-        count--;
     }
 
     close(sock);
     display_results(rtts, address);
-    free(rtts);
     return 0;
 }
 
@@ -248,10 +244,9 @@ unsigned short int calculate_checksum(void *data, unsigned int bytes) {
     return (~((unsigned short int)total_sum));
 }
 
-void display_results(float*result, char* addr){
+void display_results(float*result, char* addr) {
     if (rtt_count ==0) {
-        printf("There is no info to display\n");
-        return;
+        printf("There is no info to display");
     }
     float min = result[0],max=result[0], sum = result[0];
     for (int i = 1;i<rtt_count;i++) {

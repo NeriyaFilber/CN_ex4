@@ -16,10 +16,10 @@ CFLAGS = -Wall -Wextra -Werror -std=c99 -pedantic
 RM = rm -f
 
 # Header files.
-HEADERS = part_1.h
+HEADERS = part_2.h
 
 # Executable files.
-EXECS = part_1
+EXECS = part_2
 
 # IP address to ping.
 IP = -a 1.1.1.1 -t 4

@@ -1,77 +1,24 @@
-#######################################
-# 	Makefile for the ping program.    #
-#	Made by: Roy Simanovich.          #
-#	Last modified: 13/02/2024.        #
-#	For: Computer Networks course.    #
-#	Free to use and distribute.       #
-#######################################
-
-# Use the gcc compiler.
+# Define variables
 CC = gcc
+CFLAGS = -Wall -Wextra -O2
+LDFLAGS = -lnsl
+SRC = part_2.c
+OBJ = part_2.o
+EXEC = part_2
 
-# Flags for the compiler. Can also use -g for debugging.
-CFLAGS = -Wall -Wextra -Werror -std=c99 -pedantic
+## Define the directory path
+#DIR = /home/neriya/CLionProjects/CN_ex4/Ex_4/part_2_1
 
-# Command to remove files.
-RM = rm -f
+# Targets
+all: $(EXEC)
 
-# Header files.
-HEADERS = part_2.h
+$(EXEC): $(OBJ)
+	$(CC) $(CFLAGS) -o $(EXEC) $(OBJ) $(LDFLAGS)
 
-# Executable files.
-EXECS = part_2
+$(OBJ): $(SRC)
+	$(CC) $(CFLAGS) -c $(SRC) -o $(OBJ)
 
-# IP address to ping.
-IP = -a 1.1.1.1 -t 4
-
-# Phony targets - targets that are not files but commands to be executed by make.
-.PHONY: all default clean runp runsp
-
-# Default target - compile everything and create the executables and libraries.
-all: $(EXECS)
-
-# Alias for the default target.
-default: all
-
-
-############
-# Programs #
-############
-
-# Compile the ping program.
-$(EXECS): $(EXECS).o
-	$(CC) $(CFLAGS) -o $@ $^ -lm
-
-
-################
-# Run programs #
-################
-
-# Run ping program in sudo mode.
-runp: $(EXECS)
-	sudo ./$< $(IP)
-
-################
-# System Trace #
-################
-
-# Run the ping program with system trace (sudo mode).
-runsp: $(EXECS)
-	sudo strace ./$< $(IP)
-
-################
-# Object files #
-################
-
-# Compile all the C files into object files.
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-
-#################
-# Cleanup files #
-#################
-
-# Remove all the object files, shared libraries and executables.
 clean:
-	$(RM) *.o *.so $(EXECS)
+	rm -f $(OBJ) $(EXEC)
+
+.PHONY: all clean

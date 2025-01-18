@@ -108,7 +108,6 @@ int main(int argc, char *argv[]) {
     fprintf(stdout, "PING %s with %d bytes of data:\n", address, payload_size);
 
     while (count >= 0) {
-        printf("count %d\n",count);
         memset(buffer, 0, sizeof(buffer));
         if (type == 4) {
             struct icmphdr icmp_header;

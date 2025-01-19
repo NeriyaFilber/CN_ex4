@@ -15,7 +15,6 @@
 #include "part_1.h"
 #include <math.h>
 
-
 int main(int argc, char *argv[]) {
     if (argc < 5) {
         fprintf(stderr, "Usage: %s -a <address> -t <type> [-c <count>] [-f]\n", argv[0]);
@@ -61,7 +60,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Error: Communication type is required (use -t flag with 4 for IPv4 or 6 for IPv6).\n");
         return 1;
     }
-    rtts= (float*)malloc(count*sizeof(float));
+    rtts = (float*)malloc(count * sizeof(float));
     if (rtts == NULL) {
         perror("malloc");
         return 1;
@@ -126,7 +125,7 @@ int main(int argc, char *argv[]) {
             icmp6_header.icmp6_code = 0;
             icmp6_header.icmp6_id = htons(getpid());
             icmp6_header.icmp6_seq = htons(seq++);
-            icmp6_header.icmp6_cksum = 0; //TODO add checksum if needs
+            icmp6_header.icmp6_cksum = 0;
 
             memcpy(buffer, &icmp6_header, sizeof(icmp6_header));
             memcpy(buffer + sizeof(icmp6_header), msg, payload_size);
@@ -148,7 +147,7 @@ int main(int argc, char *argv[]) {
                 return 1;
             }
         }
-        sending_pings ++;
+        sending_pings++;
 
         int ret = poll(fds, 1, TIMEOUT);
         if (ret == 0) {
@@ -190,7 +189,7 @@ int main(int argc, char *argv[]) {
                             inet_ntoa(((struct sockaddr_in *)&source_address)->sin_addr),
                             ntohs(icmp_header->un.echo.sequence),
                             ip_header->ttl, pingPongTime);
-                    rtts[rtt_count++]= pingPongTime;
+                    rtts[rtt_count++] = pingPongTime;
                     recive_pings++;
                     if (seq == to_send)
                         break;
@@ -204,7 +203,7 @@ int main(int argc, char *argv[]) {
                     inet_ntop(AF_INET6, &((struct sockaddr_in6 *)&source_address)->sin6_addr, addr_str, sizeof(addr_str));
                     fprintf(stdout, "%d bytes from %s: icmp_seq=%d time=%.2fms\n",
                             payload_size, addr_str, ntohs(icmp6_header->icmp6_seq), pingPongTime);
-                    rtts[rtt_count++]= pingPongTime;
+                    rtts[rtt_count++] = pingPongTime;
                     recive_pings++;
                     if (seq == to_send)
                         break;
@@ -227,19 +226,23 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+// Function to calculate the checksum of a packet
 unsigned short int calculate_checksum(void *data, unsigned int bytes) {
     unsigned short int *data_pointer = (unsigned short int *)data;
     unsigned int total_sum = 0;
 
+    // Sum all 16-bit words
     while (bytes > 1) {
         total_sum += *data_pointer++;
         bytes -= 2;
     }
 
+    // Add any remaining byte
     if (bytes > 0) {
         total_sum += *((unsigned char *)data_pointer);
     }
 
+    // Fold 32-bit sum to 16 bits
     while (total_sum >> 16) {
         total_sum = (total_sum & 0xFFFF) + (total_sum >> 16);
     }
@@ -247,26 +250,29 @@ unsigned short int calculate_checksum(void *data, unsigned int bytes) {
     return (~((unsigned short int)total_sum));
 }
 
-void display_results(float*result, char* addr){
-    if (rtt_count ==0) {
+// Function to display the results of the ping
+void display_results(float *result, char *addr) {
+    if (rtt_count == 0) {
         printf("There is no info to display\n");
         return;
     }
-    float min = result[0],max=result[0], sum = result[0];
-    for (int i = 1;i<rtt_count;i++) {
+    float min = result[0], max = result[0], sum = result[0];
+    for (int i = 1; i < rtt_count; i++) {
         if (result[i] < min) {
             min = result[i];
         }
-        if (result[i]> max) {
-            max=result[i];
+        if (result[i] > max) {
+            max = result[i];
         }
         sum += result[i];
     }
     float avg = sum / rtt_count;
     printf("--- %s ping statistics ---\n%d packets transmitted, %d received, time %.2fms\nrtt min/avg/max/medv = "
-           "%.2f/%.2f/%.2f/%.2fms\n"
-        ,addr,sending_pings,recive_pings,sum,min,avg,max,calculate_std(result,rtt_count,avg));
+           "%.2f/%.2f/%.2f/%.2fms\n",
+           addr, sending_pings, recive_pings, sum, min, avg, max, calculate_std(result, rtt_count, avg));
 }
+
+// Function to calculate the standard deviation of the round-trip times
 double calculate_std(float *arr, int size, float mean) {
     double sum_of_squares = 0.0;
 
